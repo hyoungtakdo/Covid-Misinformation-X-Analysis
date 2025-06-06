@@ -1,0 +1,100 @@
+---
+title: "Analyzing COVID Misinformation Spread on X"
+author: "Tak Do"
+output:
+  
+---
+
+# Table of Contents
+
+- [Project Summary](#project-summary)
+- [Setup & Data](#setup-data)
+- [Network Visualization](#network-visualization)
+- [Network Analysis](#network-analysis)
+- [Conclusion](#conclusion)
+
+# Project Summary
+
+The social media platform X (formerly known as Twitter) played a central role in shaping public understanding—and misunderstanding—during the COVID-19 pandemic. This project investigates how COVID-19 misinformation spread through user networks by analyzing repost (retweet) behavior. 
+
+Using the **CoAID dataset**, this study maps and examines repost relationships with network analysis tools, especially focusing on centrality, clustering, and density. It aims to reveal how certain users emerge as influential actors and how structural features of the network support (or contain) misinformation. This analysis strengthens understanding of digital misinformation ecosystems and supports conversations on content moderation.
+
+# Setup & Data
+
+```{r setup, message=FALSE}
+
+library(igraph)
+
+# Load local CSV files
+tweets <- read.csv("NewsFakeCOVID-19_tweets.csv", stringsAsFactors = FALSE)
+replies <- read.csv("NewsFakeCOVID-19_tweets_replies-2.csv", stringsAsFactors = FALSE)
+
+
+edges <- data.frame(
+  source = replies$reply_id,
+  target = replies$tweet_id,
+  stringsAsFactors = FALSE
+)
+
+# Remove NA
+edges <- na.omit(edges)
+
+# Create vertex list
+nodes <- data.frame(id = unique(c(edges$source, edges$target)), stringsAsFactors = FALSE)
+
+# Create graph
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+```
+
+- **Nodes**: Users who posted or replied to COVID misinformation.  
+- **Edges**: Directed edges showing reply relationships (who replied to whom).  
+- **Timeframe**: Jan–June 2020 (early COVID misinformation).  
+- **Source**: [The Dataset](https://github.com/cuilimeng/CoAID) collected by Limeng Cui and colleagues at the University of Illinois at Urbana-Champaign.
+
+## Network Visualization
+
+``` {r network visualization, message = FALSE, echo = FALSE}
+set.seed(42)
+layout_fr <- layout_with_fr(g)
+
+plot(g,
+     layout = layout_fr,
+     vertex.label = NA,
+     vertex.size = 3,
+     vertex.color = "darkred",
+     edge.arrow.size = 0.3,
+     edge.color = "gray60",
+     main = "Reply Network of COVID Misinformation on X")
+
+legend("bottomleft", legend = c("Misinformation user", "Reply relationship"),
+       col = c("darkred", "gray50"), pch = c(19, NA), lty = c(NA, 1),
+       lwd = c(NA, 1.5), pt.cex = 1.5, bty = "n")
+```
+
+
+## Network Analysis
+
+```{r network analysis, message = FALSE}
+
+deg <- degree(g, mode = "in")
+btw <- betweenness(g)
+cls <- closeness(g)
+
+top_degree <- head(sort(deg, decreasing = TRUE), 10)
+top_btw <- head(sort(btw, decreasing = TRUE), 10)
+top_cls <- head(sort(cls, decreasing = TRUE), 10)
+
+top_degree
+top_btw
+top_cls
+```
+
+- Users with high in-degree received many replies, likely indicating influence or controversy.
+- High betweenness users connect parts of the network and may help spread information.
+- High closeness users are "centrally located" in terms of access to others.
+
+## Conclusion
+
+This analysis of CoAID’s COVID misinformation tweet and reply data reveals a directed network where some users play a disproportionately central role. High in-degree and betweenness centrality scores show how a few nodes dominate attention and potentially amplify misinformation.
+
+Though the network has low density, moderate clustering suggests tight communities — echo chambers — where misinformation might circulate efficiently. Further research could compare this network with one focused on verified factual tweets to observe differences in structure and spread dynamics.
